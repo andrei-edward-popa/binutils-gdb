@@ -1266,6 +1266,10 @@ case "${targ}" in
     want64=true
     ;;
 
+  stm8-*-elf*)
+    targ_defvec=stm8_elf32_vec
+    ;;
+
   tic6x-*-elf)
     targ_defvec=tic6x_elf32_c6000_le_vec
     targ_selvecs="tic6x_elf32_c6000_be_vec tic6x_elf32_le_vec tic6x_elf32_be_vec"

@@ -25,6 +25,10 @@
 
 #include "elf/reloc-macros.h"
 
+/* Zero preserves the established SDCC medium ABI.  Large code changes
+   the function-pointer size, return PC and argument cleanup convention.  */
+#define EF_STM8_MODEL_LARGE 0x00000001
+
 /* Relocation types.  */
 START_RELOC_NUMBERS (elf_stm8_reloc_type)
 RELOC_NUMBER (R_STM8_NONE, 0)
