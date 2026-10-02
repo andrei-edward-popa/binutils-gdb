@@ -157,6 +157,7 @@
 #include "elf/sh.h"
 #include "elf/sparc.h"
 #include "elf/spu.h"
+#include "elf/stm8.h"
 #include "elf/tic6x.h"
 #include "elf/tilegx.h"
 #include "elf/tilepro.h"
@@ -2703,6 +2704,10 @@ dump_relocations (Filedata *          filedata,
 
 	case EM_AMDGPU:
 	  rtype = elf_amdgpu_reloc_type (type);
+	  break;
+
+	case EM_STM8:
+	  rtype = elf_stm8_reloc_type (type);
 	  break;
 	}
 
@@ -15690,6 +15695,8 @@ is_32bit_abs_reloc (Filedata * filedata, unsigned int reloc_type)
 	|| reloc_type == 23; /* R_SPARC_UA32.  */
     case EM_SPU:
       return reloc_type == 6; /* R_SPU_ADDR32 */
+    case EM_STM8:
+      return reloc_type == 4; /* R_STM8_32.  */
     case EM_TI_C6000:
       return reloc_type == 1; /* R_C6000_ABS32.  */
     case EM_TILEGX:
