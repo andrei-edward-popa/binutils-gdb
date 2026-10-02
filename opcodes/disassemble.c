@@ -88,6 +88,7 @@
 #define ARCH_sh
 #define ARCH_sparc
 #define ARCH_spu
+#define ARCH_stm8
 #define ARCH_tic30
 #define ARCH_tic4x
 #define ARCH_tic54x
@@ -423,6 +424,11 @@ disassembler (enum bfd_architecture a,
       disassemble = print_insn_spu;
       break;
 #endif
+#ifdef ARCH_stm8
+    case bfd_arch_stm8:
+      disassemble = print_insn_stm8;
+      break;
+#endif
 #ifdef ARCH_tic30
     case bfd_arch_tic30:
       disassemble = print_insn_tic30;
@@ -702,6 +708,11 @@ disassemble_init_for_target (struct disassemble_info * info)
 #ifdef ARCH_riscv
     case bfd_arch_riscv:
       info->symbol_is_valid = riscv_symbol_is_valid;
+      info->created_styled_output = true;
+      break;
+#endif
+#ifdef ARCH_stm8
+    case bfd_arch_stm8:
       info->created_styled_output = true;
       break;
 #endif

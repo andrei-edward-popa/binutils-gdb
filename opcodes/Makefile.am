@@ -241,6 +241,7 @@ TARGET32_LIBOPCODES_CFILES = \
 	sparc-opc.c \
 	spu-dis.c \
 	spu-opc.c \
+	stm8-dis.c \
 	stm8-opc.c \
 	tic30-dis.c \
 	tic4x-dis.c \

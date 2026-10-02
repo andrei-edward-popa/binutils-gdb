@@ -186,6 +186,7 @@ sparc-dis.c
 sparc-opc.c
 spu-dis.c
 spu-opc.c
+stm8-dis.c
 stm8-opc.c
 sysdep.h
 tic30-dis.c
