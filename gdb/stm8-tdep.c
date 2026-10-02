@@ -23,6 +23,8 @@
 #include "dis-asm.h"
 #include "gdbarch.h"
 #include "gdbtypes.h"
+#include "objfiles.h"
+#include "progspace.h"
 #include "regcache.h"
 #include "target-descriptions.h"
 
@@ -38,7 +40,7 @@ enum stm8_regnum
   STM8_SP_REGNUM,
   STM8_CC_REGNUM,
 
-  /* Byte pseudo-registers used by STM8 debug information.  */
+  /* SDCC exposes the byte halves of X and Y in DWARF.  */
   STM8_XH_REGNUM,
   STM8_XL_REGNUM,
   STM8_YH_REGNUM,
@@ -54,9 +56,32 @@ static const char *const stm8_register_names[STM8_NUM_REGS]
 static const int stm8_register_bits[STM8_NUM_REGS]
   = { 32, 8, 16, 16, 16, 8 };
 
+enum stm8_producer
+{
+  STM8_PRODUCER_GCC,
+  STM8_PRODUCER_SDCC
+};
+
 struct stm8_gdbarch_tdep : gdbarch_tdep_base
 {
 };
+
+/* Return the compiler which produced the currently loaded debug
+   information.  SDCC uses byte pseudo-registers in its DWARF register
+   numbering, while GCC uses the word X/Y registers.  */
+
+static enum stm8_producer
+stm8_get_producer ()
+{
+  if (current_program_space != nullptr)
+    for (auto &objfile : current_program_space->objfiles ())
+      for (auto &cust : objfile.compunits ())
+	if (cust.producer () != nullptr
+	    && startswith (cust.producer (), "SDCC"))
+	  return STM8_PRODUCER_SDCC;
+
+  return STM8_PRODUCER_GCC;
+}
 
 static const char *
 stm8_register_name (struct gdbarch *gdbarch, int regnum)
@@ -156,6 +181,58 @@ stm8_pseudo_register_write (struct gdbarch *gdbarch,
     }
 }
 
+/* DWARF register numberings used by the two STM8 compiler ports.
+
+   SDCC describes the byte halves of X and Y separately as well as the
+   complete word registers.  The GCC STM8 port uses only the complete
+   registers.  */
+
+static constexpr int stm8_dwarf_regmap_sdcc[] =
+{
+  STM8_A_REGNUM,
+  STM8_XL_REGNUM,
+  STM8_XH_REGNUM,
+  STM8_YL_REGNUM,
+  STM8_YH_REGNUM,
+  STM8_CC_REGNUM,
+  STM8_X_REGNUM,
+  STM8_Y_REGNUM,
+  STM8_SP_REGNUM,
+  STM8_PC_REGNUM
+};
+
+static constexpr int stm8_dwarf_regmap_gcc[] =
+{
+  STM8_A_REGNUM,
+  STM8_X_REGNUM,
+  STM8_Y_REGNUM,
+  STM8_SP_REGNUM
+};
+
+static int
+stm8_dwarf2_reg_to_regnum_for_producer (enum stm8_producer producer,
+				       int reg)
+{
+  if (reg < 0)
+    return -1;
+
+  if (producer == STM8_PRODUCER_SDCC)
+    {
+      if ((unsigned int) reg < ARRAY_SIZE (stm8_dwarf_regmap_sdcc))
+	return stm8_dwarf_regmap_sdcc[reg];
+    }
+  else if ((unsigned int) reg < ARRAY_SIZE (stm8_dwarf_regmap_gcc))
+    return stm8_dwarf_regmap_gcc[reg];
+
+  return -1;
+}
+
+static int
+stm8_dwarf2_reg_to_regnum (struct gdbarch *gdbarch, int reg)
+{
+  return stm8_dwarf2_reg_to_regnum_for_producer (stm8_get_producer (), reg);
+}
+
 constexpr gdb_byte stm8_break_insn[] = { 0x8b };
 using stm8_breakpoint = BP_MANIPULATION (stm8_break_insn);
 
@@ -221,6 +298,7 @@ stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   set_gdbarch_pc_regnum (gdbarch, STM8_PC_REGNUM);
   set_gdbarch_sp_regnum (gdbarch, STM8_SP_REGNUM);
   set_gdbarch_ps_regnum (gdbarch, STM8_CC_REGNUM);
+  set_gdbarch_dwarf2_reg_to_regnum (gdbarch, stm8_dwarf2_reg_to_regnum);
 
   /* STM8 C implementations use 16-bit data pointers and a 16-bit int,
      while BFD/GDB keep code addresses in a 32-bit CORE_ADDR container.  */
