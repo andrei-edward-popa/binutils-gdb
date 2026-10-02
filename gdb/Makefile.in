@@ -891,6 +891,7 @@ ALL_TARGET_OBS = \
 	sparc-ravenscar-thread.o \
 	sparc-sol2-tdep.o \
 	sparc-tdep.o \
+	stm8-tdep.o \
 	svr4-tls-tdep.o \
 	symfile-mem.o \
 	tic6x-linux-tdep.o \
