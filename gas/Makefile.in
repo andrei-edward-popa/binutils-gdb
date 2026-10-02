@@ -702,6 +702,7 @@ TARGET_CPU_CFILES = \
 	config/tc-sh.c \
 	config/tc-sparc.c \
 	config/tc-spu.c \
+	config/tc-stm8.c \
 	config/tc-tic30.c \
 	config/tc-tic4x.c \
 	config/tc-tic54x.c \
@@ -775,6 +776,7 @@ TARGET_CPU_HFILES = \
 	config/tc-sh.h \
 	config/tc-sparc.h \
 	config/tc-spu.h \
+	config/tc-stm8.h \
 	config/tc-tic30.h \
 	config/tc-tic4x.h \
 	config/tc-tic54x.h \
@@ -1217,6 +1219,8 @@ config/tc-sparc.$(OBJEXT): config/$(am__dirstamp) \
 	config/$(DEPDIR)/$(am__dirstamp)
 config/tc-spu.$(OBJEXT): config/$(am__dirstamp) \
 	config/$(DEPDIR)/$(am__dirstamp)
+config/tc-stm8.$(OBJEXT): config/$(am__dirstamp) \
+	config/$(DEPDIR)/$(am__dirstamp)
 config/tc-tic30.$(OBJEXT): config/$(am__dirstamp) \
 	config/$(DEPDIR)/$(am__dirstamp)
 config/tc-tic4x.$(OBJEXT): config/$(am__dirstamp) \
@@ -1434,6 +1438,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-sh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-sparc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-spu.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-stm8.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-tic30.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-tic4x.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@config/$(DEPDIR)/tc-tic54x.Po@am__quote@
