@@ -1431,6 +1431,7 @@ case $cpu-$vendor in
 			| sparcv9b \
 			| sparcv9v \
 			| spu \
+			| stm8 \
 			| sv1 \
 			| sx* \
 			| tahoe \
