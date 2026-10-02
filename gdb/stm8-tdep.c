@@ -20,6 +20,10 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include "arch-utils.h"
+#include "dwarf2/frame.h"
+#include "extract-store-integer.h"
+#include "frame.h"
+#include "frame-unwind.h"
 #include "dis-asm.h"
 #include "gdbarch.h"
 #include "gdbtypes.h"
@@ -27,6 +31,7 @@
 #include "progspace.h"
 #include "regcache.h"
 #include "target-descriptions.h"
+#include "target.h"
 
 /* Raw registers.  Keep these numbers in sync with OpenOCD's STM8
    register packet.  */
@@ -355,6 +360,331 @@ stm8_return_value (struct gdbarch *gdbarch, struct value *function,
   return RETURN_VALUE_REGISTER_CONVENTION;
 }
 
+enum stm8_return_kind
+{
+  STM8_RETURN_RET,
+  STM8_RETURN_RETF,
+  STM8_RETURN_IRET
+};
+
+static constexpr int STM8_REG_UNSAVED = 0x7fffffff;
+
+struct stm8_prologue
+{
+  CORE_ADDR prologue_end;
+  int frame_size;
+  int saved_entry_offset[STM8_NUM_REGS];
+};
+
+struct stm8_frame_cache
+{
+  struct stm8_prologue prologue;
+  CORE_ADDR entry_sp;
+  CORE_ADDR caller_sp;
+  enum stm8_return_kind return_kind;
+};
+
+static void
+stm8_init_prologue (struct stm8_prologue *p)
+{
+  p->prologue_end = 0;
+  p->frame_size = 0;
+  for (int regnum = 0; regnum < STM8_NUM_REGS; ++regnum)
+    p->saved_entry_offset[regnum] = STM8_REG_UNSAVED;
+}
+
+/* Analyze the stack-changing part of an STM8 function prologue.
+
+   SP points at the next free stack byte.  The offsets recorded here are
+   relative to SP at function entry, after CALL/CALLF has pushed the return
+   address.  */
+
+static void
+stm8_analyze_prologue (CORE_ADDR start_pc, CORE_ADDR stop_pc,
+		       struct stm8_prologue *p)
+{
+  CORE_ADDR pc = start_pc;
+  int depth = 0;
+
+  stm8_init_prologue (p);
+  p->prologue_end = start_pc;
+
+  while (pc < stop_pc)
+    {
+      gdb_byte buf[4];
+      unsigned int insn;
+      int length;
+
+      if (target_read_code (pc, buf, sizeof (buf)) != 0)
+	break;
+
+      insn = buf[0];
+      if (buf[0] == 0x90)
+	insn = (insn << 8) | buf[1];
+
+      switch (insn)
+	{
+	case 0x3b:              /* PUSH longmem.  */
+	  ++depth;
+	  length = 3;
+	  break;
+
+	case 0x52:              /* SUB SP,#imm8.  */
+	  depth += buf[1];
+	  length = 2;
+	  break;
+
+	case 0x88:              /* PUSH A.  */
+	  p->saved_entry_offset[STM8_A_REGNUM] = -depth;
+	  ++depth;
+	  length = 1;
+	  break;
+
+	case 0x89:              /* PUSHW X.  */
+	  p->saved_entry_offset[STM8_X_REGNUM] = -(depth + 1);
+	  depth += 2;
+	  length = 1;
+	  break;
+
+	case 0x8a:              /* PUSH CC.  */
+	  p->saved_entry_offset[STM8_CC_REGNUM] = -depth;
+	  ++depth;
+	  length = 1;
+	  break;
+
+	case 0x9089:            /* PUSHW Y.  */
+	  p->saved_entry_offset[STM8_Y_REGNUM] = -(depth + 1);
+	  depth += 2;
+	  length = 2;
+	  break;
+
+	case 0x9096:            /* LDW Y,SP.  */
+	  length = 2;
+	  break;
+
+	case 0x90cf:            /* LDW longmem,Y.  */
+	  length = 4;
+	  break;
+
+	default:
+	  p->frame_size = depth;
+	  p->prologue_end = pc;
+	  return;
+	}
+
+      pc += length;
+      p->prologue_end = pc;
+    }
+
+  p->frame_size = depth;
+}
+
+static enum stm8_return_kind
+stm8_return_kind_for_pc (CORE_ADDR pc)
+{
+  gdb_byte opcode;
+
+  /* If execution is stopped on a return instruction, this is the most
+     reliable indication of the frame format.  */
+  if (target_read_code (pc, &opcode, 1) == 0)
+    {
+      if (opcode == 0x87)
+	return STM8_RETURN_RETF;
+      if (opcode == 0x80)
+	return STM8_RETURN_IRET;
+      if (opcode == 0x81)
+	return STM8_RETURN_RET;
+    }
+
+  const char *name = nullptr;
+  CORE_ADDR func_start = 0;
+  CORE_ADDR func_end = 0;
+
+  if (find_pc_partial_function (pc, &name, &func_start, &func_end)
+      && func_end > func_start
+      && target_read_code (func_end - 1, &opcode, 1) == 0)
+    {
+      if (opcode == 0x87)
+	return STM8_RETURN_RETF;
+      if (opcode == 0x80)
+	return STM8_RETURN_IRET;
+    }
+
+  return STM8_RETURN_RET;
+}
+
+static int
+stm8_return_address_size (enum stm8_return_kind kind)
+{
+  switch (kind)
+    {
+    case STM8_RETURN_RET:
+      return 2;
+    case STM8_RETURN_RETF:
+      return 3;
+    case STM8_RETURN_IRET:
+      return 9;
+    }
+
+  gdb_assert_not_reached ("invalid STM8 return kind");
+}
+
+static CORE_ADDR
+stm8_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
+{
+  CORE_ADDR func_start;
+  CORE_ADDR func_end;
+  CORE_ADDR sal_end;
+  struct stm8_prologue p;
+
+  if (!find_pc_partial_function (pc, nullptr, &func_start, &func_end))
+    return pc;
+
+  stm8_analyze_prologue (func_start, func_end, &p);
+  sal_end = skip_prologue_using_sal (gdbarch, func_start);
+
+  if (sal_end > p.prologue_end)
+    p.prologue_end = sal_end;
+
+  return p.prologue_end > pc ? p.prologue_end : pc;
+}
+
+static struct stm8_frame_cache *
+stm8_get_frame_cache (const frame_info_ptr &this_frame, void **this_cache)
+{
+  if (*this_cache != nullptr)
+    return static_cast<stm8_frame_cache *> (*this_cache);
+
+  auto *cache = frame_obstack_zalloc<stm8_frame_cache> ();
+  *this_cache = cache;
+  stm8_init_prologue (&cache->prologue);
+
+  CORE_ADDR func_start = get_frame_func (this_frame);
+  CORE_ADDR current_pc = get_frame_pc (this_frame);
+  CORE_ADDR current_sp = get_frame_sp (this_frame);
+
+  if (func_start != 0)
+    stm8_analyze_prologue (func_start, current_pc, &cache->prologue);
+
+  cache->return_kind = stm8_return_kind_for_pc (current_pc);
+
+  /* At the return instruction the epilogue has already restored SP.  */
+  gdb_byte opcode;
+  if (target_read_code (current_pc, &opcode, 1) == 0
+      && (opcode == 0x80 || opcode == 0x81 || opcode == 0x87))
+    stm8_init_prologue (&cache->prologue);
+
+  cache->entry_sp = current_sp + cache->prologue.frame_size;
+  cache->caller_sp
+    = cache->entry_sp + stm8_return_address_size (cache->return_kind);
+
+  return cache;
+}
+
+static void
+stm8_frame_this_id (const frame_info_ptr &this_frame, void **this_cache,
+		    struct frame_id *this_id)
+{
+  struct stm8_frame_cache *cache = stm8_get_frame_cache (this_frame, this_cache);
+
+  if (cache->caller_sp == 0)
+    return;
+
+  *this_id = frame_id_build (cache->caller_sp, get_frame_func (this_frame));
+}
+
+static bool
+stm8_read_stack_value (struct gdbarch *gdbarch, CORE_ADDR address, int size,
+		       ULONGEST *value)
+{
+  gdb_byte buf[3];
+
+  gdb_assert (size >= 1 && size <= (int) sizeof (buf));
+  if (target_read_memory (address, buf, size) != 0)
+    return false;
+
+  *value = extract_unsigned_integer (buf, size,
+				     gdbarch_byte_order (gdbarch));
+  return true;
+}
+
+static struct value *
+stm8_frame_prev_register (const frame_info_ptr &this_frame,
+			  void **this_cache, int regnum)
+{
+  struct stm8_frame_cache *cache = stm8_get_frame_cache (this_frame, this_cache);
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+
+  if (regnum == STM8_SP_REGNUM)
+    return frame_unwind_got_constant (this_frame, regnum, cache->caller_sp);
+
+  if (regnum == STM8_PC_REGNUM)
+    {
+      CORE_ADDR address;
+      int size;
+      ULONGEST pc;
+
+      if (cache->return_kind == STM8_RETURN_IRET)
+	{
+	  address = cache->entry_sp + 7;
+	  size = 3;
+	}
+      else
+	{
+	  address = cache->entry_sp + 1;
+	  size = cache->return_kind == STM8_RETURN_RETF ? 3 : 2;
+	}
+
+      if (!stm8_read_stack_value (gdbarch, address, size, &pc))
+	return frame_unwind_got_optimized (this_frame, regnum);
+
+      /* CALL and CALLR do not stack PCE.  They can only return within
+	 the same 64-KiB section, so recover PCE from this function.  */
+      if (cache->return_kind == STM8_RETURN_RET)
+	pc |= get_frame_pc (this_frame) & 0xff0000;
+
+      return frame_unwind_got_constant (this_frame, regnum, pc);
+    }
+
+  if (cache->return_kind == STM8_RETURN_IRET)
+    {
+      switch (regnum)
+	{
+	case STM8_CC_REGNUM:
+	  return frame_unwind_got_memory (this_frame, regnum,
+					  cache->entry_sp + 1);
+	case STM8_A_REGNUM:
+	  return frame_unwind_got_memory (this_frame, regnum,
+					  cache->entry_sp + 2);
+	case STM8_X_REGNUM:
+	  return frame_unwind_got_memory (this_frame, regnum,
+					  cache->entry_sp + 3);
+	case STM8_Y_REGNUM:
+	  return frame_unwind_got_memory (this_frame, regnum,
+					  cache->entry_sp + 5);
+	}
+    }
+
+  if (regnum >= 0 && regnum < STM8_NUM_REGS
+      && cache->prologue.saved_entry_offset[regnum] != STM8_REG_UNSAVED)
+    return frame_unwind_got_memory
+      (this_frame, regnum,
+       cache->entry_sp + cache->prologue.saved_entry_offset[regnum]);
+
+  return frame_unwind_got_register (this_frame, regnum, regnum);
+}
+
+static const struct frame_unwind_legacy stm8_frame_unwind (
+  "stm8 prologue",
+  NORMAL_FRAME,
+  FRAME_UNWIND_ARCH,
+  default_frame_unwind_stop_reason,
+  stm8_frame_this_id,
+  stm8_frame_prev_register,
+  nullptr,
+  default_frame_sniffer
+);
+
 constexpr gdb_byte stm8_break_insn[] = { 0x8b };
 using stm8_breakpoint = BP_MANIPULATION (stm8_break_insn);
 
@@ -440,6 +770,10 @@ stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 				       stm8_breakpoint::bp_from_kind);
   set_gdbarch_print_insn (gdbarch, print_insn_stm8);
   set_gdbarch_return_value (gdbarch, stm8_return_value);
+
+  set_gdbarch_skip_prologue (gdbarch, stm8_skip_prologue);
+  dwarf2_append_unwinders (gdbarch);
+  frame_unwind_append_unwinder (gdbarch, &stm8_frame_unwind);
 
   if (tdesc_data != nullptr)
     {
