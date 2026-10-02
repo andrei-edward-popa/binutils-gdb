@@ -200,6 +200,7 @@ TARGET_CPU_CFILES = \
 	config/tc-sh.c \
 	config/tc-sparc.c \
 	config/tc-spu.c \
+	config/tc-stm8.c \
 	config/tc-tic30.c \
 	config/tc-tic4x.c \
 	config/tc-tic54x.c \
@@ -273,6 +274,7 @@ TARGET_CPU_HFILES = \
 	config/tc-sh.h \
 	config/tc-sparc.h \
 	config/tc-spu.h \
+	config/tc-stm8.h \
 	config/tc-tic30.h \
 	config/tc-tic4x.h \
 	config/tc-tic54x.h \
