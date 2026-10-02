@@ -71,6 +71,7 @@
 @set SCORE
 @set SH
 @set SPARC
+@set STM8
 @set TIC54X
 @set TIC6X
 @set TILEGX

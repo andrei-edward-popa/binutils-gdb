@@ -1,0 +1,53 @@
+@c Copyright (c) 2026 Andrei-Edward Popa
+@c This is part of the GAS manual.
+@c For copying conditions, see the file as.texinfo.
+@c man end
+@ifset GENERIC
+@page
+@node STM8-Dependent
+@chapter STM8 Dependent Features
+@end ifset
+
+@cindex STM8 support
+@menu
+* STM8 Options::                Options
+* STM8 Syntax::                 Syntax and directives
+@end menu
+
+@node STM8 Options
+@section Options
+
+@c man begin OPTIONS
+@table @gcctabopt
+@item --model=medium
+@itemx --model=large
+Select the code memory model.  The default is @code{medium}, with
+16-bit code addresses; @code{large} uses 24-bit code addresses.
+The @code{.stm8_model} directive also selects this model.  Conflicting
+model selections in one object are rejected.
+
+@item --relax
+@itemx --no-relax
+Enable or disable assembler relaxation of relative jumps to symbolic
+addresses.  Relaxation is enabled by default.  A jump that cannot reach
+its destination uses @code{JP} in the medium model or @code{JPF} in the
+large model.  Conditional jumps invert their condition to skip the
+absolute jump.  Jumps to undefined, weak or other-section symbols use
+absolute relocations because their relative distance is unknown until
+link time.  @code{CALLR} and @code{JRF} retain their original encoding.
+@end table
+@c man end
+
+@node STM8 Syntax
+@section Syntax and directives
+
+Register names are case insensitive.  @samp{;} starts a comment and
+@samp{#} starts a comment when it is the first character on a line.
+Immediate operands have a @samp{#} prefix.  A memory operand with a
+@samp{.s} suffix selects the short address encoding.
+
+The @code{lo8}, @code{hi8} and @code{hh8} expression modifiers extract
+successive bytes of an address, with relocations when needed.
+The @code{.3byte} directive emits a big-endian 24-bit value.
+The @code{.stm8_model "medium"} and @code{.stm8_model "large"} directives
+select the code memory model and record it in the ELF object.

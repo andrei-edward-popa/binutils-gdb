@@ -82,6 +82,7 @@ CPU_DOCS = \
 	%D%/c-ppc.texi \
 	%D%/c-pru.texi \
 	%D%/c-rl78.texi \
+	%D%/c-stm8.texi \
 	%D%/c-riscv.texi \
 	%D%/c-rx.texi \
 	%D%/c-s390.texi \

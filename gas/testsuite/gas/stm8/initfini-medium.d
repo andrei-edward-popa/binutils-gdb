@@ -1,0 +1,9 @@
+#name: STM8 medium initialization array entries
+#readelf: -SW
+#...
+.*\.preinit_array +PREINIT_ARRAY +00000000 +[0-9a-f]+ +000002 +02 +WA +.*
+#...
+.*\.init_array +INIT_ARRAY +00000000 +[0-9a-f]+ +000002 +02 +WA +.*
+#...
+.*\.fini_array +FINI_ARRAY +00000000 +[0-9a-f]+ +000002 +02 +WA +.*
+#pass

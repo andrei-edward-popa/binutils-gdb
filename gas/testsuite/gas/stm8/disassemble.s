@@ -1,0 +1,10 @@
+	.text
+back:
+	jrne back
+	jrnh back
+	btjt 0x1234, #7, back
+	btjf 0x1234, #0, back
+	ld a, ([0x12.s], y)
+	mov 0x1234, #0x56
+	mov 0x12.s, 0x34.s
+	mov 0x1234.w, 0x5678.w
