@@ -233,6 +233,128 @@ stm8_dwarf2_reg_to_regnum (struct gdbarch *gdbarch, int reg)
   return stm8_dwarf2_reg_to_regnum_for_producer (stm8_get_producer (), reg);
 }
 
+enum stm8_return_value_layout
+{
+  STM8_RETURN_VALUE_A,
+  STM8_RETURN_VALUE_X,
+  STM8_RETURN_VALUE_YL_X,
+  STM8_RETURN_VALUE_Y_X,
+  STM8_RETURN_VALUE_MEMORY
+};
+
+static enum stm8_return_value_layout
+stm8_return_value_layout_for_size (ULONGEST size)
+{
+  switch (size)
+    {
+    case 1:
+      return STM8_RETURN_VALUE_A;
+    case 2:
+      return STM8_RETURN_VALUE_X;
+    case 3:
+      return STM8_RETURN_VALUE_YL_X;
+    case 4:
+      return STM8_RETURN_VALUE_Y_X;
+    default:
+      return STM8_RETURN_VALUE_MEMORY;
+    }
+}
+
+static void
+stm8_store_return_value (struct type *type, struct regcache *regcache,
+			 const gdb_byte *valbuf)
+{
+  switch (stm8_return_value_layout_for_size (type->length ()))
+    {
+    case STM8_RETURN_VALUE_A:
+      regcache->raw_write (STM8_A_REGNUM, valbuf);
+      break;
+
+    case STM8_RETURN_VALUE_X:
+      regcache->raw_write (STM8_X_REGNUM, valbuf);
+      break;
+
+    case STM8_RETURN_VALUE_YL_X:
+      {
+	gdb_byte y[2] = {};
+
+	/* A 24-bit result is returned in YL:X.  Since STM8 is
+	   big-endian, VALBUF[0] is the most significant byte.  */
+	regcache->raw_read (STM8_Y_REGNUM, y);
+	y[1] = valbuf[0];
+	regcache->raw_write (STM8_Y_REGNUM, y);
+	regcache->raw_write (STM8_X_REGNUM, valbuf + 1);
+      }
+      break;
+
+    case STM8_RETURN_VALUE_Y_X:
+      regcache->raw_write (STM8_Y_REGNUM, valbuf);
+      regcache->raw_write (STM8_X_REGNUM, valbuf + 2);
+      break;
+
+    case STM8_RETURN_VALUE_MEMORY:
+      error (_("unsupported STM8 return value size %s"),
+	     pulongest (type->length ()));
+    }
+}
+
+static void
+stm8_extract_return_value (struct type *type, struct regcache *regcache,
+			   gdb_byte *valbuf)
+{
+  switch (stm8_return_value_layout_for_size (type->length ()))
+    {
+    case STM8_RETURN_VALUE_A:
+      regcache->raw_read (STM8_A_REGNUM, valbuf);
+      break;
+
+    case STM8_RETURN_VALUE_X:
+      regcache->raw_read (STM8_X_REGNUM, valbuf);
+      break;
+
+    case STM8_RETURN_VALUE_YL_X:
+      {
+	gdb_byte y[2];
+
+	regcache->raw_read (STM8_Y_REGNUM, y);
+	valbuf[0] = y[1];
+	regcache->raw_read (STM8_X_REGNUM, valbuf + 1);
+      }
+      break;
+
+    case STM8_RETURN_VALUE_Y_X:
+      regcache->raw_read (STM8_Y_REGNUM, valbuf);
+      regcache->raw_read (STM8_X_REGNUM, valbuf + 2);
+      break;
+
+    case STM8_RETURN_VALUE_MEMORY:
+      error (_("unsupported STM8 return value size %s"),
+	     pulongest (type->length ()));
+    }
+}
+
+/* Implement the return_value gdbarch method.  */
+
+static enum return_value_convention
+stm8_return_value (struct gdbarch *gdbarch, struct value *function,
+		   struct type *valtype, struct regcache *regcache,
+		   gdb_byte *readbuf, const gdb_byte *writebuf)
+{
+  if (valtype->code () == TYPE_CODE_STRUCT
+      || valtype->code () == TYPE_CODE_UNION
+      || valtype->code () == TYPE_CODE_ARRAY
+      || stm8_return_value_layout_for_size (valtype->length ())
+	 == STM8_RETURN_VALUE_MEMORY)
+    return RETURN_VALUE_STRUCT_CONVENTION;
+
+  if (readbuf != nullptr)
+    stm8_extract_return_value (valtype, regcache, readbuf);
+  if (writebuf != nullptr)
+    stm8_store_return_value (valtype, regcache, writebuf);
+
+  return RETURN_VALUE_REGISTER_CONVENTION;
+}
+
 constexpr gdb_byte stm8_break_insn[] = { 0x8b };
 using stm8_breakpoint = BP_MANIPULATION (stm8_break_insn);
 
@@ -317,6 +439,7 @@ stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   set_gdbarch_sw_breakpoint_from_kind (gdbarch,
 				       stm8_breakpoint::bp_from_kind);
   set_gdbarch_print_insn (gdbarch, print_insn_stm8);
+  set_gdbarch_return_value (gdbarch, stm8_return_value);
 
   if (tdesc_data != nullptr)
     {
