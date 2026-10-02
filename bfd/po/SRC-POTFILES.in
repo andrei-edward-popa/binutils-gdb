@@ -216,6 +216,7 @@ elf32-sh.c
 elf32-sparc.c
 elf32-spu.c
 elf32-spu.h
+elf32-stm8.c
 elf32-tic6x.c
 elf32-tic6x.h
 elf32-tilegx.c

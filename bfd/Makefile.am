@@ -345,6 +345,7 @@ BFD32_BACKENDS = \
 	elf32-sh.lo \
 	elf32-sparc.lo \
 	elf32-spu.lo \
+	elf32-stm8.lo \
 	elf32-tic6x.lo \
 	elf32-tilegx.lo \
 	elf32-tilepro.lo \
@@ -480,6 +481,7 @@ BFD32_BACKENDS_CFILES = \
 	elf32-sh.c \
 	elf32-sparc.c \
 	elf32-spu.c \
+	elf32-stm8.c \
 	elf32-tic6x.c \
 	elf32-tilegx.c \
 	elf32-tilepro.c \
