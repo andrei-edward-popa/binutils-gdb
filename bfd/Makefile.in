@@ -628,6 +628,7 @@ ALL_MACHINES = \
 	cpu-sh.lo \
 	cpu-sparc.lo \
 	cpu-spu.lo \
+	cpu-stm8.lo \
 	cpu-tic30.lo \
 	cpu-tic4x.lo \
 	cpu-tic54x.lo \
@@ -711,6 +712,7 @@ ALL_MACHINES_CFILES = \
 	cpu-sh.c \
 	cpu-sparc.c \
 	cpu-spu.c \
+	cpu-stm8.c \
 	cpu-tic30.c \
 	cpu-tic4x.c \
 	cpu-tic54x.c \
@@ -1540,6 +1542,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-sh.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-sparc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-spu.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-stm8.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic30.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic4x.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic54x.Plo@am__quote@

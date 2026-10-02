@@ -1848,6 +1848,8 @@ enum bfd_architecture
 #define bfd_mach_amdgcn_gfx1201         0x04e
 #define bfd_mach_amdgcn_gfx12_5_generic 0x05b
 #define bfd_mach_amdgcn_gfx1250         0x049
+  bfd_arch_stm8,      /* STMicroelectronics STM8.  */
+#define bfd_mach_stm8          1
   bfd_arch_last
   };
 

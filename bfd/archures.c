@@ -591,6 +591,8 @@ DESCRIPTION
 .#define bfd_mach_amdgcn_gfx1201         0x04e
 .#define bfd_mach_amdgcn_gfx12_5_generic 0x05b
 .#define bfd_mach_amdgcn_gfx1250         0x049
+.  bfd_arch_stm8,      {* STMicroelectronics STM8.  *}
+.#define bfd_mach_stm8          1
 .  bfd_arch_last
 .  };
 */
@@ -710,6 +712,7 @@ extern const bfd_arch_info_type bfd_score_arch;
 extern const bfd_arch_info_type bfd_sh_arch;
 extern const bfd_arch_info_type bfd_sparc_arch;
 extern const bfd_arch_info_type bfd_spu_arch;
+extern const bfd_arch_info_type bfd_stm8_arch;
 extern const bfd_arch_info_type bfd_tic30_arch;
 extern const bfd_arch_info_type bfd_tic4x_arch;
 extern const bfd_arch_info_type bfd_tic54x_arch;
@@ -796,6 +799,7 @@ static const bfd_arch_info_type * const bfd_archures_list[] =
     &bfd_sh_arch,
     &bfd_sparc_arch,
     &bfd_spu_arch,
+    &bfd_stm8_arch,
     &bfd_tic30_arch,
     &bfd_tic4x_arch,
     &bfd_tic54x_arch,
