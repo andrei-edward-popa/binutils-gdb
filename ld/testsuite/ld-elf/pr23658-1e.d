@@ -16,6 +16,8 @@
 #xfail: *-*-hpux*
 #xfail: arc*-* avr-* m68hc1*-* microblaze*-* nds32*-* xstormy16-*-*
 #noxfail: microblaze*-linux*
+# STM8 uses explicit program headers in its default linker script.
+#xfail: stm8-*-*
 
 #...
  +[0-9]+ +\.note.gnu.build-id +

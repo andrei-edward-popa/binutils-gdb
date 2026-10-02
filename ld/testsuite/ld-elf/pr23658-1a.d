@@ -10,6 +10,8 @@
 #xfail: [uses_genelf]
 # The following targets place .note.gnu.build-id in unusual places.
 #xfail: d10v-* pru-*
+# STM8 uses explicit program headers in its default linker script.
+#xfail: stm8-*-*
 
 #...
  +[0-9]+ +\.note\.4 \.note\.1 +
