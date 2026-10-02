@@ -32,6 +32,7 @@
 #include "regcache.h"
 #include "target-descriptions.h"
 #include "target.h"
+#include "gdbsupport/selftest.h"
 
 /* Raw registers.  Keep these numbers in sync with OpenOCD's STM8
    register packet.  */
@@ -787,7 +788,119 @@ stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return gdbarch;
 }
 
+#if GDB_SELF_TEST
+
+namespace selftests {
+
+static void
+stm8_pseudo_register_mapping_test ()
+{
+  stm8_pseudo_register_part part;
+
+  part = stm8_pseudo_register_part_for_regnum (STM8_XH_REGNUM);
+  SELF_CHECK (part.raw_regnum == STM8_X_REGNUM && part.byte == 0);
+  part = stm8_pseudo_register_part_for_regnum (STM8_XL_REGNUM);
+  SELF_CHECK (part.raw_regnum == STM8_X_REGNUM && part.byte == 1);
+  part = stm8_pseudo_register_part_for_regnum (STM8_YH_REGNUM);
+  SELF_CHECK (part.raw_regnum == STM8_Y_REGNUM && part.byte == 0);
+  part = stm8_pseudo_register_part_for_regnum (STM8_YL_REGNUM);
+  SELF_CHECK (part.raw_regnum == STM8_Y_REGNUM && part.byte == 1);
+}
+
+static void
+stm8_dwarf_register_mapping_test ()
+{
+  const int sdcc_expected[] =
+    {
+      STM8_A_REGNUM, STM8_XL_REGNUM, STM8_XH_REGNUM, STM8_YL_REGNUM,
+      STM8_YH_REGNUM, STM8_CC_REGNUM, STM8_X_REGNUM, STM8_Y_REGNUM,
+      STM8_SP_REGNUM, STM8_PC_REGNUM
+    };
+  const int gcc_expected[] =
+    {
+      STM8_A_REGNUM, STM8_X_REGNUM, STM8_Y_REGNUM, STM8_SP_REGNUM
+    };
+
+  for (unsigned int i = 0; i < ARRAY_SIZE (sdcc_expected); ++i)
+    SELF_CHECK (stm8_dwarf2_reg_to_regnum_for_producer
+		(STM8_PRODUCER_SDCC, i) == sdcc_expected[i]);
+
+  for (unsigned int i = 0; i < ARRAY_SIZE (gcc_expected); ++i)
+    SELF_CHECK (stm8_dwarf2_reg_to_regnum_for_producer
+		(STM8_PRODUCER_GCC, i) == gcc_expected[i]);
+
+  SELF_CHECK (stm8_dwarf2_reg_to_regnum_for_producer
+	      (STM8_PRODUCER_SDCC, -1) == -1);
+  SELF_CHECK (stm8_dwarf2_reg_to_regnum_for_producer
+	      (STM8_PRODUCER_SDCC, ARRAY_SIZE (sdcc_expected)) == -1);
+  SELF_CHECK (stm8_dwarf2_reg_to_regnum_for_producer
+	      (STM8_PRODUCER_GCC, ARRAY_SIZE (gcc_expected)) == -1);
+}
+
+static void
+stm8_return_value_layout_test ()
+{
+  SELF_CHECK (stm8_return_value_layout_for_size (1) == STM8_RETURN_VALUE_A);
+  SELF_CHECK (stm8_return_value_layout_for_size (2) == STM8_RETURN_VALUE_X);
+  SELF_CHECK (stm8_return_value_layout_for_size (3)
+	      == STM8_RETURN_VALUE_YL_X);
+  SELF_CHECK (stm8_return_value_layout_for_size (4) == STM8_RETURN_VALUE_Y_X);
+  SELF_CHECK (stm8_return_value_layout_for_size (5)
+	      == STM8_RETURN_VALUE_MEMORY);
+}
+
+static void
+stm8_return_frame_size_test ()
+{
+  SELF_CHECK (stm8_return_address_size (STM8_RETURN_RET) == 2);
+  SELF_CHECK (stm8_return_address_size (STM8_RETURN_RETF) == 3);
+  SELF_CHECK (stm8_return_address_size (STM8_RETURN_IRET) == 9);
+}
+
+static void
+stm8_register_name_test ()
+{
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_PC_REGNUM),
+		      "pc") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_A_REGNUM),
+		      "a") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_X_REGNUM),
+		      "x") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_Y_REGNUM),
+		      "y") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_SP_REGNUM),
+		      "sp") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_CC_REGNUM),
+		      "cc") == 0);
+
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_XH_REGNUM),
+		      "xh") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_XL_REGNUM),
+		      "xl") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_YH_REGNUM),
+		      "yh") == 0);
+  SELF_CHECK (strcmp (stm8_register_name (nullptr, STM8_YL_REGNUM),
+		      "yl") == 0);
+}
+
+} /* namespace selftests */
+
+#endif /* GDB_SELF_TEST */
+
 INIT_GDB_FILE (stm8_tdep)
 {
   gdbarch_register (bfd_arch_stm8, stm8_gdbarch_init);
+
+#if GDB_SELF_TEST
+  selftests::register_test ("stm8-pseudo-register-mapping",
+			    selftests::stm8_pseudo_register_mapping_test);
+  selftests::register_test ("stm8-dwarf-register-mapping",
+			    selftests::stm8_dwarf_register_mapping_test);
+  selftests::register_test ("stm8-return-value-layout",
+			    selftests::stm8_return_value_layout_test);
+  selftests::register_test ("stm8-return-frame-size",
+			    selftests::stm8_return_frame_size_test);
+  selftests::register_test ("stm8-register-names",
+			    selftests::stm8_register_name_test);
+#endif
 }
