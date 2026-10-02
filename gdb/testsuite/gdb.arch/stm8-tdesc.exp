@@ -1,0 +1,49 @@
+# Copyright 2026 Free Software Foundation, Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Check that STM8 target descriptions are accepted, and that target
+# registers are mapped by name rather than by remote register number.
+
+require {istarget "stm8-*-*"}
+require allow_xml_test
+
+clean_restart
+
+proc check_stm8_register_sizes {} {
+    foreach {reg size} {
+	pc 4
+	a  1
+	x  2
+	y  2
+	sp 2
+	cc 1
+    } {
+	gdb_test "p sizeof (\$$reg)" " = $size" \
+	    "size of \$$reg register is $size"
+    }
+}
+
+foreach filename {stm8-tdesc.xml stm8-tdesc-reordered.xml} {
+    with_test_prefix $filename {
+	set xml_path "$srcdir/$subdir/$filename"
+	if {[is_remote host]} {
+	    set xml_path [remote_download host $xml_path]
+	}
+
+	gdb_test_no_output "set tdesc filename $xml_path" \
+	    "load target description"
+	check_stm8_register_sizes
+    }
+}
