@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE target SYSTEM "gdb-target.dtd">
+<target>
+  <architecture>stm8</architecture>
+  <feature name="org.gnu.gdb.stm8.core">
+    <reg name="a" bitsize="8" type="uint8" regnum="0"/>
+    <reg name="x" bitsize="16" type="uint16" regnum="1"/>
+    <reg name="y" bitsize="16" type="uint16" regnum="2"/>
+    <reg name="sp" bitsize="16" type="data_ptr" regnum="3"/>
+    <reg name="pc" bitsize="32" type="code_ptr" regnum="4"/>
+    <reg name="cc" bitsize="8" type="uint8" regnum="5"/>
+  </feature>
+</target>
