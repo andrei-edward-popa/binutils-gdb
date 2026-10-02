@@ -8,6 +8,8 @@
 # Since generic linker targets don't place SHT_NOTE sections as orphan,
 # SHT_NOTE sections aren't grouped nor sorted.
 #xfail: [uses_genelf]
+# STM8 uses explicit program headers in its default linker script.
+#xfail: stm8-*-*
 
 #...
  +[0-9]+ +\.note\.4 \.note\.1( .note.gnu.property|) +

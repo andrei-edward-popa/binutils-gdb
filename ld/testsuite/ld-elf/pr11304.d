@@ -4,6 +4,10 @@
 #readelf: -S --wide
 # Address 0x800000 overlaps with .heap section on tic6x-*-elf.
 #notarget: tic6x-*-elf
+# STM8 uses explicit program headers in its default linker script, so an
+# allocated orphan section created with --section-start isn't assigned to
+# a load segment automatically.
+#xfail: stm8-*-*
 
 #failif
 #...
