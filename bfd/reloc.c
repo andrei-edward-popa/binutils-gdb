@@ -7893,6 +7893,16 @@ ENUMX
 ENUMDOC
   LARCH relocations.
 
+ENUM
+  BFD_RELOC_STM8_LO8
+ENUMX
+  BFD_RELOC_STM8_HI8
+ENUMX
+  BFD_RELOC_STM8_HH8
+ENUMDOC
+  STM8 relocations for extracting bits 0 through 7, 8 through 15, and
+  16 through 23 of a link-time value.
+
 ENDSENUM
   BFD_RELOC_UNUSED
 

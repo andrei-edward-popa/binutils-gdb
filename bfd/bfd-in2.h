@@ -7335,6 +7335,9 @@ enum bfd_reloc_code_real
   BFD_RELOC_LARCH_TLS_GD_PCADD_LO12,
   BFD_RELOC_LARCH_TLS_DESC_PCADD_HI20,
   BFD_RELOC_LARCH_TLS_DESC_PCADD_LO12,
+  BFD_RELOC_STM8_LO8,
+  BFD_RELOC_STM8_HI8,
+  BFD_RELOC_STM8_HH8,
   BFD_RELOC_UNUSED
 };
 typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
