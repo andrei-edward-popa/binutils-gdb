@@ -660,6 +660,11 @@ s12z-*-*)
 	gdb_target_obs="s12z-tdep.o"
 	;;
 
+stm8-*-*)
+	# Target: STM8
+	gdb_target_obs="stm8-tdep.o"
+	;;
+
 tic6x-*-*linux)
 	# Target: GNU/Linux TI C6x
 	gdb_target_obs="tic6x-tdep.o tic6x-linux-tdep.o solib-dsbt.o \

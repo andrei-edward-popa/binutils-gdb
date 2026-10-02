@@ -1,0 +1,61 @@
+# Copyright (C) 2026 Free Software Foundation, Inc.
+# Copyright (c) 2026 Andrei-Edward Popa
+
+# This file is part of GDB.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Check CFI at each instruction boundary, including temporary pushes
+# and the bytewise exchange of the software frame pointer during restore.
+
+require {istarget "stm8-*-*"}
+require allow_python_tests
+
+standard_testfile
+
+foreach model {medium large} {
+    foreach opt {-O0 -O2 -Os -O3} {
+	foreach function {leaf dynamic dynamic_float} {
+	    with_test_prefix "$model $opt $function" {
+		if {[prepare_for_testing "failed to prepare" \
+			 "$testfile-$model$opt" $srcfile \
+			 [list debug additional_flags=-mmodel=$model \
+			       additional_flags=$opt]]} {
+		    continue
+		}
+		if {![runto "*$function"]} {
+		    continue
+		}
+		delete_breakpoints
+		with_timeout_factor 12 {
+		    gdb_test_multiline "unwind every instruction" \
+		    "python" "" \
+		    "count = 0" "" \
+		    "while gdb.newest_frame().name() == '$function':" "" \
+		    "    frame = gdb.newest_frame()" "" \
+		    "    for name in \['$function', 'caller', 'main'\]:" "" \
+		    "        assert frame is not None" "" \
+		    "        assert frame.name() == name, frame.name()" "" \
+		    "        frame = frame.older()" "" \
+		    "    count += 1" "" \
+		    "    assert count < 2000, 'function did not return'" "" \
+		    "    gdb.execute('stepi', to_string=True)" "" \
+		    "assert count > 0" "" \
+		    "print('CFI checked at %d instructions' % count)" "" \
+		    "end" "CFI checked at \[0-9\]+ instructions"
+		}
+	    }
+	}
+    }
+}

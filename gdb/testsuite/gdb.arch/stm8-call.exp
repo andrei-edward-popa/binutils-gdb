@@ -1,0 +1,90 @@
+# Copyright (C) 2026 Free Software Foundation, Inc.
+# Copyright (c) 2026 Andrei-Edward Popa
+
+# This file is part of GDB.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+require {istarget "stm8-*-*"}
+
+standard_testfile
+
+foreach model {medium large} {
+    foreach opt {-O0 -O2 -Os -O3} {
+	with_test_prefix "$model $opt" {
+	    if {[prepare_for_testing "failed to prepare" \
+		     "$testfile-$model$opt" \
+		     $srcfile [list debug additional_flags=-mmodel=$model \
+				   additional_flags=$opt]]} {
+		continue
+	    }
+	    if {![runto_main]} {
+		continue
+	    }
+
+	    delete_breakpoints
+
+	    set code_ptr_size [expr {$model eq "large" ? 3 : 2}]
+	    gdb_test "p sizeof (&byte_fn)" " = $code_ptr_size"
+	    gdb_test "p sizeof (int *)" " = 2"
+	    gdb_test_no_output "set \$saved_sp = \$sp"
+	    gdb_test_no_output "set \$saved_pc = \$pc"
+	    gdb_test "p/x (unsigned) byte_fn (3, 256, 5)" " = 0x8"
+	    gdb_test "p/x word_fn (0x1234, 5, 256)" " = 0x1339"
+	    gdb_test "p/x long_fn (0x12345678UL, 0x1234)" " = 0x123468ac"
+	    gdb_test "p/x wide_fn (0x1234, 0x1122334455667788ULL)" \
+		" = 0x11223344556689bc"
+	    gdb_test "p float_fn (1.25f, 2.5f)" " = 3.75"
+	    gdb_test "p/x small_fn (0x1234, 0x56).b" " = 0x56"
+	    gdb_test "p/x big_fn (0x12, 0x12345678UL).a" " = 0x12345678"
+	    gdb_test "p struct_arg (sample, 32, 256)" " = 296"
+	    gdb_test "p variadic_fn (3, 256, 32, 3)" " = 291"
+	    gdb_test "p dynamic_fn (300)" " = 45"
+	    gdb_test "call ((void (*) (void)) _interrupt_fn) ()" \
+		"Cannot call an STM8 interrupt handler from GDB"
+	    gdb_test "p \$pc == \$saved_pc" " = 1" "PC after rejected call"
+	    gdb_test "p \$sp == \$saved_sp" " = 1" "restore SP"
+
+	    if {![allow_python_tests]} {
+		continue
+	    }
+	    foreach {function expression} {
+		word_fn {word_fn (0x1234, 5, 256)}
+		float_fn {float_fn (1.25f, 2.5f)}
+		variadic_fn {variadic_fn (3, 256, 32, 3)}
+	    } {
+		with_test_prefix "interrupted $function" {
+		    # Stop after the first instruction; infcall steps past
+		    # a breakpoint at the function entry address.
+		    gdb_test_multiline "break inside function" \
+			"python" "" \
+			"addr = int(gdb.parse_and_eval('&$function'))" "" \
+			"arch = gdb.newest_frame().architecture()" "" \
+			"insns = arch.disassemble(addr, count=2)" "" \
+			"gdb.execute('break *%d' % insns\[1\]\['addr'\])" "" \
+			"end" "Breakpoint .*"
+		    set stop_re "The program being debugged stopped while"
+		    append stop_re " in a function called from GDB.*"
+		    gdb_test "p $expression" $stop_re "stop during call"
+		    set bt_re "#0 .*$function .*"
+		    append bt_re "#1 +<function called from gdb>.*#2 +main .*"
+		    gdb_test "bt 3" $bt_re "dummy frame backtrace"
+		    delete_breakpoints
+		    gdb_test "continue" ".*" "finish interrupted call"
+		    gdb_test "p \$sp == \$saved_sp" " = 1" "restore SP"
+		}
+	    }
+	}
+    }
+}

@@ -48,6 +48,8 @@ amd64 Windows/MSVC              x86_64-*-windows-msvc
 
 AArch64 Windows/MSVC            aarch64-*-windows-msvc
 
+STMicroelectronics STM8         stm8-*-elf*
+
 * New commands
 
 set print shadowed on|off
