@@ -138,6 +138,13 @@ void set_gdbarch_floatformat_for_type (struct gdbarch *gdbarch, gdbarch_floatfor
 int gdbarch_ptr_bit (struct gdbarch *gdbarch);
 void set_gdbarch_ptr_bit (struct gdbarch *gdbarch, int ptr_bit);
 
+/* Number of bits in a pointer to a function or method.  This defaults to
+   ptr_bit, but targets with different code and data pointer representations
+   can override it. */
+
+int gdbarch_code_ptr_bit (struct gdbarch *gdbarch);
+void set_gdbarch_code_ptr_bit (struct gdbarch *gdbarch, int code_ptr_bit);
+
 /* addr_bit is the size of a target address as represented in gdb */
 
 int gdbarch_addr_bit (struct gdbarch *gdbarch);

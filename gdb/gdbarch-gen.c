@@ -66,6 +66,7 @@ struct gdbarch
   bool wchar_signed = true;
   gdbarch_floatformat_for_type_ftype *floatformat_for_type = default_floatformat_for_type;
   int ptr_bit = 4*TARGET_CHAR_BIT;
+  int code_ptr_bit = 0;
   int addr_bit = 0;
   int dwarf2_addr_size = 0;
   bool char_signed = true;
@@ -311,6 +312,9 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of wchar_signed, invalid_p == 0.  */
   /* Skip verify of floatformat_for_type, invalid_p == 0.  */
   /* Skip verify of ptr_bit, invalid_p == 0.  */
+  if (gdbarch->code_ptr_bit == 0)
+    gdbarch->code_ptr_bit = gdbarch_ptr_bit (gdbarch);
+  /* Skip verify of code_ptr_bit, invalid_p == 0.  */
   if (gdbarch->addr_bit == 0)
     gdbarch->addr_bit = gdbarch_ptr_bit (gdbarch);
   /* Skip verify of addr_bit, invalid_p == 0.  */
@@ -603,6 +607,9 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
   gdb_printf (file,
 	      "gdbarch_dump: ptr_bit = %s\n",
 	      plongest (gdbarch->ptr_bit));
+  gdb_printf (file,
+	      "gdbarch_dump: code_ptr_bit = %s\n",
+	      plongest (gdbarch->code_ptr_bit));
   gdb_printf (file,
 	      "gdbarch_dump: addr_bit = %s\n",
 	      plongest (gdbarch->addr_bit));
@@ -1698,6 +1705,24 @@ set_gdbarch_ptr_bit (struct gdbarch *gdbarch,
 		     int ptr_bit)
 {
   gdbarch->ptr_bit = ptr_bit;
+}
+
+int
+gdbarch_code_ptr_bit (struct gdbarch *gdbarch)
+{
+  gdb_assert (gdbarch != nullptr);
+  /* Check variable changed from its initial value.  */
+  gdb_assert (gdbarch->code_ptr_bit != 0);
+  if (gdbarch_debug >= 2)
+    gdb_printf (gdb_stdlog, "gdbarch_code_ptr_bit called\n");
+  return gdbarch->code_ptr_bit;
+}
+
+void
+set_gdbarch_code_ptr_bit (struct gdbarch *gdbarch,
+			  int code_ptr_bit)
+{
+  gdbarch->code_ptr_bit = code_ptr_bit;
 }
 
 int

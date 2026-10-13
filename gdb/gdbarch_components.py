@@ -330,6 +330,18 @@ ptr_bit is the size of a pointer on the target
 
 Value(
     comment="""
+Number of bits in a pointer to a function or method.  This defaults to
+ptr_bit, but targets with different code and data pointer representations
+can override it.
+""",
+    type="int",
+    name="code_ptr_bit",
+    postdefault="gdbarch_ptr_bit (gdbarch)",
+    invalid=False,
+)
+
+Value(
+    comment="""
 addr_bit is the size of a target address as represented in gdb
 """,
     type="int",

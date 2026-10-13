@@ -1,6 +1,7 @@
 /* Support routines for manipulating internal types for GDB.
 
    Copyright (C) 1992-2026 Free Software Foundation, Inc.
+   Copyright (c) 2026 Andrei-Edward Popa
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -361,6 +362,23 @@ smash_type (struct type *type)
   /* For now, leave the pointer/reference types alone.  */
 }
 
+/* Return the storage width of a pointer to TYPE.  Function addresses
+   can have a different representation from object addresses.  */
+
+static int
+pointer_type_bits (type *type)
+{
+  gdbarch *arch = type->arch ();
+  int bits = gdbarch_ptr_bit (arch);
+  if (gdbarch_code_ptr_bit (arch) != bits)
+    {
+      type_code code = check_typedef (type)->code ();
+      if (code == TYPE_CODE_FUNC || code == TYPE_CODE_METHOD)
+	return gdbarch_code_ptr_bit (arch);
+    }
+  return bits;
+}
+
 /* See gdbtypes.h.  */
 
 type *
@@ -374,9 +392,7 @@ make_pointer_type (type *type)
   ntype->set_target_type (type);
   type->pointer_type = ntype;
 
-  /* FIXME!  Assumes the machine has only one representation for pointers!  */
-
-  ntype->set_length (gdbarch_ptr_bit (type->arch ()) / TARGET_CHAR_BIT);
+  ntype->set_length (pointer_type_bits (type) / TARGET_CHAR_BIT);
   ntype->set_code (TYPE_CODE_PTR);
 
   /* Mark pointers as unsigned.  The target converts between pointers
@@ -418,11 +434,7 @@ make_reference_type (type *type, type_code refcode)
   else
     type->rvalue_reference_type = ntype;
 
-  /* FIXME!  Assume the machine has only one representation for
-     references, and that it matches the (only) representation for
-     pointers!  */
-
-  ntype->set_length (gdbarch_ptr_bit (type->arch ()) / TARGET_CHAR_BIT);
+  ntype->set_length (pointer_type_bits (type) / TARGET_CHAR_BIT);
   ntype->set_code (refcode);
 
   return ntype;

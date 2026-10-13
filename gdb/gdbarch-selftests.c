@@ -1,6 +1,7 @@
 /* Self tests for gdbarch for GDB, the GNU debugger.
 
    Copyright (C) 2017-2026 Free Software Foundation, Inc.
+   Copyright (c) 2026 Andrei-Edward Popa
 
    This file is part of GDB.
 
@@ -28,6 +29,23 @@
 #include "gdbsupport/unordered_map.h"
 
 namespace selftests {
+
+/* Check synthesized code and data pointer types independently.  */
+
+static void
+pointer_type_test (gdbarch *arch)
+{
+  type *data = builtin_type (arch)->builtin_int;
+  type *code = lookup_function_type (data);
+  SELF_CHECK (lookup_pointer_type (data)->length () * TARGET_CHAR_BIT
+	      == gdbarch_ptr_bit (arch));
+  SELF_CHECK (lookup_pointer_type (code)->length () * TARGET_CHAR_BIT
+	      == gdbarch_code_ptr_bit (arch));
+  SELF_CHECK (lookup_lvalue_reference_type (code)->length () * TARGET_CHAR_BIT
+	      == gdbarch_code_ptr_bit (arch));
+  SELF_CHECK (lookup_rvalue_reference_type (code)->length () * TARGET_CHAR_BIT
+	      == gdbarch_code_ptr_bit (arch));
+}
 
 /* Test gdbarch methods register_to_value and value_to_register.  */
 
@@ -186,6 +204,9 @@ check_stack_growth (struct gdbarch *gdbarch)
 
 INIT_GDB_FILE (gdbarch_selftests)
 {
+  selftests::register_test_foreach_arch ("pointer_type",
+				       selftests::pointer_type_test);
+
   selftests::register_test_foreach_arch ("register_to_value",
 					 selftests::register_to_value_test);
 
