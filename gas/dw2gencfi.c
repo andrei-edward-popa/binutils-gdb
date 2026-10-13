@@ -1,5 +1,6 @@
 /* dw2gencfi.c - Support for generating Dwarf2 CFI information.
    Copyright (C) 2003-2026 Free Software Foundation, Inc.
+   Copyright (c) 2026 Andrei-Edward Popa
    Contributed by Michal Ludvig <mludvig@suse.cz>
 
    This file is part of GAS, the GNU Assembler.
@@ -649,6 +650,27 @@ void
 cfi_add_CFA_same_value (unsigned regno)
 {
   cfi_add_CFA_insn_reg (DW_CFA_same_value, regno);
+}
+
+/* Add constant bytes to the current CFI instruction stream.  */
+
+void
+cfi_add_CFA_escape (const unsigned char *data, size_t size)
+{
+  struct cfi_insn_data *insn = alloc_cfi_insn_data ();
+  struct cfi_escape_data **tail = &insn->u.esc;
+
+  insn->insn = CFI_escape;
+  for (size_t i = 0; i < size; ++i)
+    {
+      struct cfi_escape_data *item = notes_calloc (1, sizeof (*item));
+      item->exp.X_op = O_constant;
+      item->exp.X_add_number = data[i];
+      item->type = CFI_ESC_byte;
+      item->reloc = TC_PARSE_CONS_RETURN_NONE;
+      *tail = item;
+      tail = &item->next;
+    }
 }
 
 void
